@@ -1,0 +1,44 @@
+playbook_basic.yml
+- hosts: localhost
+  
+  vars:
+    package:
+      - git
+      - nginx 
+    name_server:
+      - 8.8.8.8
+      - 8.8.4.4
+    
+  tasks:
+
+  - name: Make sure that we can connect to the machine
+    ping:
+
+  - name: Set up WiFi from a template
+    template: 
+      src: ./templates/wpa_supplicant.conf
+      dest: /etc/wpa_supplicant/wpa_supplicant.conf 
+    tags: wifi
+
+  - name: Set up keyboard
+    template: 
+      src: ./templates/keyboard
+      dest: /etc/default/keyboard
+    tags: keyboard
+
+  - name: Update name server
+    lineinfile:
+      dest: /etc/resolv.conf
+      line: "nameserver {{ item }}"
+    with_items: "{{name_server}}"
+    tags: nameserver
+
+  - name: install Basic package for pi
+    apt: name= {{item}} state=present update_cache=yes
+    with_items: "{{package}}"
+    tags: package  
+  
+  - name: Get Adafruit GPIO Library from github
+    git:
+      repo: https://github.com/adafruit/Adafruit_Python_GPIO.git
+      dest: /opt/Adafruit_Python_GPIO
