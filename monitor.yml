@@ -1,0 +1,64 @@
+- hosts: localhost
+  
+  vars:
+    dependencies:
+      - python-pip
+      - build-essential
+      - python-dev
+      - python-openssl
+ 
+  tasks:
+
+  - name: Make sure that we can connect to the machine
+    ping:
+
+# dht11 temperature sensor
+  - name: install dependencies for dht11
+    apt: name= {{item}} state=present update_cache=yes
+    with_items: "{{dependencies}}"
+    tags: package  
+  
+  - name: Get Adafruit GPIO Library from github
+    git:
+      repo: https://github.com/adafruit/Adafruit_Python_DHT.git
+      dest: /opt/Adafruit_Python_DHT
+    tags: git_dht11 
+
+  - name: Install Adafruit Python Servo Library
+    become: yes
+    command: python setup.py install
+    args:
+      chdir: /opt/Adafruit_Python_DHT
+    tags: install_dht11
+
+# amp-tools
+  - name: Get amptools from github
+    git:
+      repo: http://git.udev.hk/engineer/amp-tools.git
+      dest: /opt/amp-tools
+  - name: Install amp-tools
+    become: yes 
+    command: dpkg --install libwandevent_3.0.2-1_armhf.deb 
+    command: apt --fix-broken install
+    command: dpkg --install amplet2-client_0.8.0-1_armhf.deb
+    args:
+      chdir: /opt/amp-tools/RaspberryPI-debian_stretch/
+    tags: install_amptools
+      
+# install telegraf
+  - name: install telegraf
+    become: yes
+    command: curl -sL https://repos.influxdata.com/influxdb.key | sudo apt-key add -
+    command: echo "deb https://repos.influxdata.com/debian stretch stable" | sudo tee /etc/apt/sources.list.d/influxdb.list
+    tags: add_influx_repo
+
+  - name: install telegraf
+    become: yes
+    apt: name=telegraf state=present update_cache=yes
+    tags: install_telegraf
+
+# prepare sciprt
+   - name: make directory
+     command: mkdir /opt/exec
+   - name: copy script
+     template:
